@@ -1,4 +1,5 @@
-from helper_funcs import config, get_user_input, quickstart, get_activities, calendar_heatmap
+# from helper_funcs import config, get_user_input, quickstart, get_activities, calendar_heatmap, pretty_df
+from helper_funcs import *
 import argparse
 import sys
 
@@ -33,15 +34,37 @@ if config():
 else:
     raise Exception("Config file does not exist. Please create a config.json file using the --quickstart flag.")
 
-update_viz = get_user_input("\nYour last run was insertDateFromLogs\nWould you like to update visualizations by pinging strava?")
+activities_df, access_token, last_activity_date = get_activities(client_id, client_secret, refresh_token)
 
-if update_viz:
-    activities_df, access_token, last_activity_date = get_activities(client_id, client_secret, refresh_token)
-    print(f"access token is {access_token}")
-    print(f"most recent activity is {last_activity_date}")
+# pretty_df(
+#     activities_df,
+#     cols=[
+#         'name',
+#         'distance',
+#         'moving_time',
+#         'start_date_local',
+#         'type'
+#     ])
 
-    # create calendar heatmap visual
-    calendar_heatmap(activities_df, last_activity_date)
-else:
-    print("exiting...")
-    sys.exit()
+pretty_df(
+    activities_df,
+    cols=[
+        'name',
+        'distance',
+        'moving_time',
+        'start_date_local',
+        'type'
+    ])
+
+# update_viz = get_user_input("\nYour last run was insertDateFromLogs\nWould you like to update visualizations by pinging strava?")
+
+# if update_viz:
+#     activities_df, access_token, last_activity_date = get_activities(client_id, client_secret, refresh_token)
+#     print(f"access token is {access_token}")
+#     print(f"most recent activity is {last_activity_date}")
+
+#     # create calendar heatmap visual
+#     calendar_heatmap(activities_df, last_activity_date)
+# else:
+#     print("exiting...")
+#     sys.exit()

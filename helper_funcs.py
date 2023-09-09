@@ -7,6 +7,7 @@ pd.options.mode.chained_assignment = None
 import urllib3
 import math
 from plotly_calplot import calplot
+from tabulate import tabulate
 
 def config():
     config_file_path = 'config.json'
@@ -136,3 +137,38 @@ def calendar_heatmap(df, today):
     fig.write_image(f"viz/calplot_{today}.png", width=1300, height=700)
     fig.write_html(f"viz/calplot_{today}.html")
     print("images written to viz/ directory")
+
+def meters_to_miles(column):
+    # 1 meter is approximately 0.000621371 miles
+    conversion_factor = 0.000621371
+    return (column * conversion_factor).round(2)
+
+def seconds_to_hh_mm(column):
+    # Convert seconds to hours and minutes
+    hours = column // 3600  # 3600 seconds in an hour
+    minutes = (column % 3600) // 60  # 60 seconds in a minute
+    return f"{hours:02d}:{minutes:02d}"
+
+def convert_timestamp(column):
+    # Convert the column to datetime
+    datetime_series = pd.to_datetime(column)
+    
+    # Format the datetime as desired
+    formatted_series = datetime_series.dt.strftime('%Y-%m-%d %I:%M %p')
+    
+    return formatted_series
+
+def pretty_df(df, length=10, cols=[]):
+    # Convert columns
+    df['distance'] = meters_to_miles(df['distance'])
+    # df['moving_time'] = seconds_to_hh_mm(df['moving_time'])
+    df['moving_time'] = df['moving_time'].apply(seconds_to_hh_mm)
+    
+    df['start_date_local'] = convert_timestamp(df['start_date_local'])
+
+    if len(cols) == 0:
+        print(tabulate(df.head(length), headers='keys', tablefmt='psql', showindex=False))
+    else:
+        df = df[cols]
+        print(tabulate(df.head(length), headers='keys', tablefmt='psql', showindex=False))
+
