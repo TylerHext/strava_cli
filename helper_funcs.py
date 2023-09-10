@@ -8,6 +8,8 @@ import urllib3
 import math
 from plotly_calplot import calplot
 from tabulate import tabulate
+from requests.exceptions import RequestException  # Import RequestException
+import time
 
 def config():
     config_file_path = 'config.json'
@@ -25,18 +27,19 @@ def get_user_input(question):
 def quickstart():
     print("welcome to quickstart wizard!")
     if os.path.exists('config.json'):
-        clear_configs = get_user_input('You already have a config.json file in the proper location. Would you like to clear the file and start fresh?')
+        clear_configs = get_user_input('You already have a config.json file. Would you like to overwrite it?')
         if clear_configs:
             # remove config.json file
             print('clearing configs...')
             # create config.json file
         else:
-            continue_on = get_user_input('Would you like to continue with generating visualizations?')
-            if continue_on:
-                pass
-            else:
-                print('exiting...')
-                sys.exit()
+            pass
+            # continue_on = get_user_input('Would you like to continue with generating visualizations?')
+            # if continue_on:
+            #     pass
+            # else:
+            #     print('exiting...')
+            #     sys.exit()
 
 def get_activities(client_id, client_secret, refresh_token, many='all'):
     '''Returns all Strava activities in a pandas DataFrame'''
@@ -60,6 +63,7 @@ def get_activities(client_id, client_secret, refresh_token, many='all'):
         res = requests.post(auth_url, data=payload, verify=False)
         res.raise_for_status()  # Check for any errors in the response
         access_token = res.json()['access_token']
+        
 
         # Construct header using access token
         header = {'Authorization': 'Bearer ' + access_token}
@@ -68,8 +72,17 @@ def get_activities(client_id, client_secret, refresh_token, many='all'):
 
         # Get total activity count
         stats_url = f'https://www.strava.com/api/v3/athletes/{id}/stats'
-        res_stats = requests.get(stats_url, headers=header).json()
+        res_stats = requests.get(stats_url, headers=header)
+        res_hd = res_stats.headers
+        res_stats = res_stats.json()
         total_activities = res_stats["all_run_totals"]["count"] + res_stats["all_ride_totals"]["count"]
+
+        api_limit = res_hd.get('X-RateLimit-Limit')
+        api_usage = res_hd.get('X-RateLimit-Usage')
+
+        # print("Response Headers:")
+        # for key, value in res_hd.items():
+        #     print(f"{key}: {value}")
 
         df = pd.DataFrame()
 
@@ -77,12 +90,18 @@ def get_activities(client_id, client_secret, refresh_token, many='all'):
             # Calculate how many pages to request; 200 is max page size
             pages = math.ceil(total_activities / 200)
 
-            # Get all activities & append to df
+            print("Fetching all activities:")
             for page in range(1, pages + 1):
                 param = {'per_page': 200, 'page': page}
                 res_activities = requests.get(activities_url, headers=header, params=param).json()
                 data = pd.json_normalize(res_activities)
                 df = pd.concat([df, data], axis=0)
+                sys.stdout.write('\r')
+                sys.stdout.write(f"Progress: {page}/{pages} pages")
+                sys.stdout.flush()
+                time.sleep(1)  # Add a small delay to avoid API rate limits
+            print("\nFetching completed.")
+
         else:
             try:
                 many = int(many)
@@ -92,6 +111,7 @@ def get_activities(client_id, client_secret, refresh_token, many='all'):
                 res_activities = requests.get(activities_url, headers=header, params=param).json()
                 data = pd.json_normalize(res_activities)
                 df = pd.concat([df, data], axis=0)
+                print(f"Fetching {many} activities...")
             except ValueError:
                 raise ValueError("Invalid value for 'many'. Please provide an integer or 'all'.")
 
@@ -100,10 +120,10 @@ def get_activities(client_id, client_secret, refresh_token, many='all'):
         # Getting activity id and date of the most recent activity, return for GPX build
         dt = df['start_date_local'][0][0:10]
 
-        return df, access_token, dt
+        return df, access_token, dt, api_limit, api_usage
     except RequestException as e:
         print(f"Error occurred while retrieving Strava activities: {e}")
-        return None, None, None
+        return None, None, None, None, None
 
 
 def calendar_heatmap(df, today):
@@ -172,3 +192,15 @@ def pretty_df(df, length=10, cols=[]):
         df = df[cols]
         print(tabulate(df.head(length), headers='keys', tablefmt='psql', showindex=False))
 
+def split_string_to_integers(input_string):
+    try:
+        # Split the input string at the comma and convert the parts to integers
+        parts = input_string.split(',')
+        if len(parts) == 2:
+            num1 = int(parts[0].strip())
+            num2 = int(parts[1].strip())
+            return num1, num2
+        else:
+            raise ValueError("Input should contain exactly two comma-separated integers.")
+    except ValueError:
+        raise ValueError("Invalid input format. Please provide two comma-separated integers.")
