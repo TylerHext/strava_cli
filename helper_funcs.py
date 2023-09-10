@@ -8,10 +8,11 @@ import urllib3
 import math
 from plotly_calplot import calplot
 from tabulate import tabulate
-from requests.exceptions import RequestException  # Import RequestException
+from requests.exceptions import RequestException
 import time
 
 def config():
+    ''' returns configs in json format from config.json file '''
     config_file_path = 'config.json'
     if os.path.exists(config_file_path):
         with open(config_file_path, 'r') as f:
@@ -21,10 +22,12 @@ def config():
         return False
     
 def get_user_input(question):
+    ''' prompts user for yes/no, only proceeds if yes '''
     response = input(question + " (yes/no): ").strip().lower()
     return response == "yes"
 
 def quickstart():
+    ''' asks some questions to populate a config.json file for new user '''
     print("welcome to quickstart wizard!")
     if os.path.exists('config.json'):
         clear_configs = get_user_input('You already have a config.json file. Would you like to overwrite it?')
@@ -34,12 +37,15 @@ def quickstart():
             # create config.json file
         else:
             pass
-            # continue_on = get_user_input('Would you like to continue with generating visualizations?')
-            # if continue_on:
-            #     pass
-            # else:
-            #     print('exiting...')
-            #     sys.exit()
+    else: # TODO
+        pass
+        # create a config.json file by asking questions to user
+
+
+
+### ---------------------------------
+#                 DATA
+### ---------------------------------
 
 def get_activities(client_id, client_secret, refresh_token, many='all'):
     '''Returns all Strava activities in a pandas DataFrame'''
@@ -64,7 +70,6 @@ def get_activities(client_id, client_secret, refresh_token, many='all'):
         res.raise_for_status()  # Check for any errors in the response
         access_token = res.json()['access_token']
         
-
         # Construct header using access token
         header = {'Authorization': 'Bearer ' + access_token}
         # Get athlete id, we need all these calls to calculate how many calls required for all activities
@@ -79,10 +84,6 @@ def get_activities(client_id, client_secret, refresh_token, many='all'):
 
         api_limit = res_hd.get('X-RateLimit-Limit')
         api_usage = res_hd.get('X-RateLimit-Usage')
-
-        # print("Response Headers:")
-        # for key, value in res_hd.items():
-        #     print(f"{key}: {value}")
 
         df = pd.DataFrame()
 
@@ -125,9 +126,55 @@ def get_activities(client_id, client_secret, refresh_token, many='all'):
         print(f"Error occurred while retrieving Strava activities: {e}")
         return None, None, None, None, None
 
+def meters_to_miles(column):
+    # 1 meter is approximately 0.000621371 miles
+    conversion_factor = 0.000621371
+    return (column * conversion_factor).round(2)
+
+def seconds_to_hh_mm(column):
+    # Convert seconds to hours and minutes
+    hours = column // 3600  # 3600 seconds in an hour
+    minutes = (column % 3600) // 60  # 60 seconds in a minute
+    return f"{hours:02d}:{minutes:02d}"
+
+def convert_timestamp(column):
+    # convert column to datetime
+    datetime_series = pd.to_datetime(column)
+    # format datetime pretty
+    formatted_series = datetime_series.dt.strftime('%Y-%m-%d %I:%M %p')
+    return formatted_series
+
+def pretty_df(df, length=10, cols=[]):
+    # convert column units & formats
+    df['distance'] = meters_to_miles(df['distance'])
+    df['moving_time'] = df['moving_time'].apply(seconds_to_hh_mm)
+    df['start_date_local'] = convert_timestamp(df['start_date_local'])
+
+    if len(cols) == 0:
+        print(tabulate(df.head(length), headers='keys', tablefmt='psql', showindex=False))
+    else:
+        df = df[cols]
+        print(tabulate(df.head(length), headers='keys', tablefmt='psql', showindex=False))
+
+def split_string_to_integers(input_string):
+    try:
+        # Split the input string at the comma and convert the parts to integers
+        parts = input_string.split(',')
+        if len(parts) == 2:
+            num1 = int(parts[0].strip())
+            num2 = int(parts[1].strip())
+            return num1, num2
+        else:
+            raise ValueError("Input should contain exactly two comma-separated integers.")
+    except ValueError:
+        raise ValueError("Invalid input format. Please provide two comma-separated integers.")
+
+
+### ---------------------------------
+#                 VIZ
+### ---------------------------------
 
 def calendar_heatmap(df, today):
-    # should move run filtering and measurement conversions to get_activities() ?
     # filter for runs only
     df = df[df['type'] == 'Run']
     # convert distance to miles
@@ -157,50 +204,3 @@ def calendar_heatmap(df, today):
     fig.write_image(f"viz/calplot_{today}.png", width=1300, height=700)
     fig.write_html(f"viz/calplot_{today}.html")
     print("images written to viz/ directory")
-
-def meters_to_miles(column):
-    # 1 meter is approximately 0.000621371 miles
-    conversion_factor = 0.000621371
-    return (column * conversion_factor).round(2)
-
-def seconds_to_hh_mm(column):
-    # Convert seconds to hours and minutes
-    hours = column // 3600  # 3600 seconds in an hour
-    minutes = (column % 3600) // 60  # 60 seconds in a minute
-    return f"{hours:02d}:{minutes:02d}"
-
-def convert_timestamp(column):
-    # Convert the column to datetime
-    datetime_series = pd.to_datetime(column)
-    
-    # Format the datetime as desired
-    formatted_series = datetime_series.dt.strftime('%Y-%m-%d %I:%M %p')
-    
-    return formatted_series
-
-def pretty_df(df, length=10, cols=[]):
-    # Convert columns
-    df['distance'] = meters_to_miles(df['distance'])
-    # df['moving_time'] = seconds_to_hh_mm(df['moving_time'])
-    df['moving_time'] = df['moving_time'].apply(seconds_to_hh_mm)
-    
-    df['start_date_local'] = convert_timestamp(df['start_date_local'])
-
-    if len(cols) == 0:
-        print(tabulate(df.head(length), headers='keys', tablefmt='psql', showindex=False))
-    else:
-        df = df[cols]
-        print(tabulate(df.head(length), headers='keys', tablefmt='psql', showindex=False))
-
-def split_string_to_integers(input_string):
-    try:
-        # Split the input string at the comma and convert the parts to integers
-        parts = input_string.split(',')
-        if len(parts) == 2:
-            num1 = int(parts[0].strip())
-            num2 = int(parts[1].strip())
-            return num1, num2
-        else:
-            raise ValueError("Input should contain exactly two comma-separated integers.")
-    except ValueError:
-        raise ValueError("Invalid input format. Please provide two comma-separated integers.")
