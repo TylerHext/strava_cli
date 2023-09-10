@@ -1,3 +1,4 @@
 config.json
 viz/
 .DS_Store
+__pycache__/

@@ -65,11 +65,15 @@ pretty_df(
     ])
 
 # api usage statistics
-usage_15, usage_daily = split_string_to_integers(api_usage)
-limit_15, limit_daily = split_string_to_integers(api_limit)
+def api_stats(api_usage, api_limit):
+    # parse usage & limits
+    usage_15, usage_daily = split_string_to_integers(str(api_usage))
+    limit_15, limit_daily = split_string_to_integers(str(api_limit))
+    # calculate usage stats
+    usage_15 = round(usage_15/limit_15*100, 2)
+    usage_daily = round(usage_daily/limit_daily*100, 2)
+    # display usage stats
+    print(f'15min usage: {usage_15}%\r')
+    print(f'Daily usage: {usage_daily}%\r')
 
-usage_15 = round(usage_15/limit_15*100, 2)
-usage_daily = round(usage_daily/limit_daily*100, 2)
-
-print(f'15min usage: {usage_15}%\r')
-print(f'Daily usage: {usage_daily}%\r')
+api_stats(api_usage, api_limit)
