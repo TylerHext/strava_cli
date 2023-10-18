@@ -1,6 +1,8 @@
 from helper_funcs import *
 import argparse
 import sys
+import time
+import datetime
 
 ## ---------------------------------
 # argparse configurations
@@ -50,9 +52,14 @@ welcome_msg = '''
 '''
 print(welcome_msg)
 
+# get todays date
+today = datetime.datetime.today().strftime('%Y-%m-%d')
+
 # fetch fresh activities from strava
 activities_df, access_token, last_activity_date, api_limit, api_usage = get_activities(client_id, client_secret, refresh_token)
 
+# show user last 10 activities
+time.sleep(1)
 print('Last 10 activities:\r')
 pretty_df(
     activities_df,
@@ -64,16 +71,52 @@ pretty_df(
         'type'
     ])
 
-# api usage statistics
-def api_stats(api_usage, api_limit):
-    # parse usage & limits
-    usage_15, usage_daily = split_string_to_integers(str(api_usage))
-    limit_15, limit_daily = split_string_to_integers(str(api_limit))
-    # calculate usage stats
-    usage_15 = round(usage_15/limit_15*100, 2)
-    usage_daily = round(usage_daily/limit_daily*100, 2)
-    # display usage stats
-    print(f'15min usage: {usage_15}%\r')
-    print(f'Daily usage: {usage_daily}%\r')
-
+# print api usage statistics
 api_stats(api_usage, api_limit)
+
+# offer user a list of options: refresh viz, write csv, change configs
+while True:
+    print("\nOptions:")
+    print("1. Create viz")
+    # print("2. Write CSV")
+    # print("3. API usage")
+    # print("4. Configure")
+    print("Q. Quit")
+
+    choice = input("Please select an option: ")
+
+    if choice == '1':
+        # Implement refresh visualization functionality here
+        # print('you chose create viz!')
+        print("\nOptions:")
+        print("1. Refresh all visualizations")
+        print("B. Back")
+
+        choice_1 = input("Please select an option: ")
+
+        if choice_1 == '1':
+            print("refreshing all visualizations...")
+            print(activities_df['distance'])
+            calendar_heatmap(activities_df, today)
+        elif choice.lower() == 'b':
+            pass
+        else:
+            print("Invalid choice. Please select a valid option...")
+        pass
+    elif choice == '2':
+        # Implement write CSV functionality here
+        print('you chose write csv!')
+        pass
+    elif choice == '3':
+        # Implement detailed api usage statistics here
+        print('you chose api usage!')
+        pass
+    elif choice == '4':
+        # Implement change configurations functionality here
+        print('you chose update configs!')
+        pass
+    elif choice.lower() == 'q':
+        print("Goodbye!")
+        break
+    else:
+        print("Invalid choice. Please select a valid option (1/2/3/...).")

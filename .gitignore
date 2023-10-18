@@ -1,4 +1,4 @@
-config.json
-viz/
 .DS_Store
-__pycache__/
+viz/
+notes.txt
+config.json
