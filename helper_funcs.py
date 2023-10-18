@@ -11,6 +11,10 @@ from tabulate import tabulate
 from requests.exceptions import RequestException
 import time
 
+### ---------------------------------
+#               ARGPARSE
+### ---------------------------------
+
 def config():
     ''' returns configs in json format from config.json file '''
     config_file_path = 'config.json'
@@ -41,6 +45,12 @@ def quickstart():
         pass
         # create a config.json file by asking questions to user
 
+def update_status_bar(iteration, total, bar_length=50):
+    progress = iteration / total
+    arrow = '=' * int(round(progress * bar_length))
+    spaces = ' ' * (bar_length - len(arrow))
+    sys.stdout.write(f'\r[{arrow}{spaces}] {int(progress * 100)}%')
+    sys.stdout.flush()
 
 
 ### ---------------------------------
@@ -97,10 +107,11 @@ def get_activities(client_id, client_secret, refresh_token, many='all'):
                 res_activities = requests.get(activities_url, headers=header, params=param).json()
                 data = pd.json_normalize(res_activities)
                 df = pd.concat([df, data], axis=0)
-                sys.stdout.write('\r')
-                sys.stdout.write(f"Progress: {page}/{pages} pages")
-                sys.stdout.flush()
-                time.sleep(1)  # Add a small delay to avoid API rate limits
+                # sys.stdout.write('\r')
+                # sys.stdout.write(f"Progress: {page}/{pages} pages")
+                # sys.stdout.flush()
+                update_status_bar(page, pages)
+                # time.sleep(1)  # Add a small delay to avoid API rate limits
             print("\nFetching completed.")
 
         else:
@@ -169,6 +180,16 @@ def split_string_to_integers(input_string):
     except ValueError:
         raise ValueError("Invalid input format. Please provide two comma-separated integers.")
 
+def api_stats(api_usage, api_limit):
+    # parse usage & limits
+    usage_15, usage_daily = split_string_to_integers(str(api_usage))
+    limit_15, limit_daily = split_string_to_integers(str(api_limit))
+    # calculate usage stats
+    usage_15 = round(usage_15/limit_15*100, 2)
+    usage_daily = round(usage_daily/limit_daily*100, 2)
+    # display usage stats
+    print(f'15min usage: {usage_15}%\r')
+    print(f'Daily usage: {usage_daily}%\r')
 
 ### ---------------------------------
 #                 VIZ
@@ -178,7 +199,7 @@ def calendar_heatmap(df, today):
     # filter for runs only
     df = df[df['type'] == 'Run']
     # convert distance to miles
-    df['distance'] = df['distance'].div(1609.34).round(2)
+    # df['distance'] = df['distance'].div(1609.34).round(2) # commented out because apparently i'm converting upstream; idk where
 
     # convert date
     # idk wtf this is but its the only way i could get it to work with calplot
