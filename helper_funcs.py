@@ -191,6 +191,9 @@ def api_stats(api_usage, api_limit):
     print(f'15min usage: {usage_15}%\r')
     print(f'Daily usage: {usage_daily}%\r')
 
+def write_csv(activities_df,today,output_dir="activities/"):
+    activities_df.to_csv(f"{output_dir}activities_{today}.csv")
+
 ### ---------------------------------
 #                 VIZ
 ### ---------------------------------

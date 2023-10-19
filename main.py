@@ -78,7 +78,7 @@ api_stats(api_usage, api_limit)
 while True:
     print("\nOptions:")
     print("1. Create viz")
-    # print("2. Write CSV")
+    print("2. Write CSV")
     # print("3. API usage")
     # print("4. Configure")
     print("Q. Quit")
@@ -105,7 +105,10 @@ while True:
         pass
     elif choice == '2':
         # Implement write CSV functionality here
-        print('you chose write csv!')
+        # print('you chose write csv!')
+        odir = "activities/"
+        write_csv(activities_df=activities_df, today=today, output_dir=odir)
+        print("csv written to activities/ directory")
         pass
     elif choice == '3':
         # Implement detailed api usage statistics here

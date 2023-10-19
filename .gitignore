@@ -2,3 +2,5 @@
 viz/
 notes.txt
 config.json
+__pycache__/
+activities/
